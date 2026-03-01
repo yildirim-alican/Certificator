@@ -8,6 +8,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { useTemplateStore } from '@/store/useTemplateStore';
 import { useApi } from '@/hooks/useApi';
 import { CertificateTemplate } from '@/types/CertificateTemplate';
@@ -17,6 +18,7 @@ import Input from '@/components/shared/Input';
 import { Search } from 'lucide-react';
 
 export default function Dashboard() {
+  const router = useRouter();
   const templates = useTemplateStore((state) => state.templates);
   const setTemplates = useTemplateStore((state) => state.setTemplates);
   const { get } = useApi();
@@ -44,8 +46,8 @@ export default function Dashboard() {
   );
 
   const handleEdit = (id: string) => {
-    // TODO: Navigate to editor
-    console.log('Edit template:', id);
+    // Navigate to editor
+    router.push(`/editor/${id}`);
   };
 
   const handleDelete = async (id: string) => {
@@ -76,7 +78,7 @@ export default function Dashboard() {
               className="pl-10"
             />
           </div>
-          <Button variant="primary" onClick={() => console.log('Create new')}>
+          <Button variant="primary" onClick={() => router.push('/create')}>
             New Template
           </Button>
         </div>
@@ -94,9 +96,9 @@ export default function Dashboard() {
           <div className="text-center py-12">
             <p className="text-gray-500 text-lg">No templates found</p>
             <p className="text-gray-400 mt-2">Create a new template to get started</p>
-            <Button variant="primary" className="mt-6">
-              Create First Template
-            </Button>
+          <Button variant="primary" onClick={() => router.push('/create')} className="mt-6">
+            Create First Template
+          </Button>
           </div>
         )}
 
