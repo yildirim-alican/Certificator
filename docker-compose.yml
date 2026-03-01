@@ -1,0 +1,45 @@
+version: '3.8'
+
+services:
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: certificator-frontend
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:8000/api
+    depends_on:
+      - backend
+    volumes:
+      - ./frontend/src:/app/src
+    networks:
+      - certificator-network
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: certificator-backend
+    ports:
+      - "8000:8000"
+    environment:
+      - ENV=development
+      - DATABASE_URL=sqlite:///./certificator.db
+      - DEBUG=true
+    volumes:
+      - ./backend:/app
+      - certificator-data:/app/uploads
+      - certificator-temp:/app/temp
+    networks:
+      - certificator-network
+    command: python main.py
+
+volumes:
+  certificator-data:
+  certificator-temp:
+
+networks:
+  certificator-network:
+    driver: bridge
