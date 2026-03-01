@@ -1,11 +1,13 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { CertificateTemplate } from '@/types/CertificateTemplate';
 import { useExcelParser } from '@/hooks/useExcelParser';
+import { useConfetti } from '@/hooks/useConfetti';
 import ExcelUploader from '@/components/excel/ExcelUploader';
 import ColumnMapper from '@/components/excel/ColumnMapper';
 import DataPreview from '@/components/excel/DataPreview';
+import SuccessModal from '@/components/excel/SuccessModal';
 import Button from '@/components/shared/Button';
 import { Download, AlertCircle, CheckCircle, ArrowRight } from 'lucide-react';
 
@@ -32,6 +34,8 @@ export const BulkGenerationWorkflow: React.FC<BulkGenerationProps> = ({
   onGenerationComplete,
 }) => {
   const { parseExcelFile, autoMapColumns } = useExcelParser();
+  const { triggerConfetti } = useConfetti();
+  const containerRef = useRef<HTMLDivElement>(null);
   const [step, setStep] = useState<WorkflowStep>('upload');
   const [excelData, setExcelData] = useState<{
     columns: string[];
@@ -43,6 +47,7 @@ export const BulkGenerationWorkflow: React.FC<BulkGenerationProps> = ({
   const [mappedData, setMappedData] = useState<Record<string, string>[] | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
 
   const templateVariables = template?.variables || [];
 
@@ -103,7 +108,14 @@ export const BulkGenerationWorkflow: React.FC<BulkGenerationProps> = ({
     try {
       await onGenerationStart(mappedData);
       setStep('complete');
-      onGenerationComplete?.();
+      
+      // Trigger confetti effect
+      if (containerRef.current) {
+        triggerConfetti(containerRef.current);
+      }
+      
+      // Show success modal
+      setShowSuccessModal(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to generate certificates');
       setStep('preview');
@@ -129,7 +141,7 @@ export const BulkGenerationWorkflow: React.FC<BulkGenerationProps> = ({
   };
 
   return (
-    <div className="max-w-4xl mx-auto">
+    <div className="max-w-4xl mx-auto" ref={containerRef}>
       {/* Progress Steps */}
       <div className="mb-8">
         <div className="flex items-center justify-between mb-8">
@@ -245,38 +257,37 @@ export const BulkGenerationWorkflow: React.FC<BulkGenerationProps> = ({
 
         {step === 'complete' && mappedData && (
           <div className="space-y-6 text-center py-12">
-            <div className="flex justify-center mb-4">
-              <div className="bg-green-100 rounded-full p-4">
-                <CheckCircle className="text-green-600" size={48} />
-              </div>
-            </div>
-            <h2 className="text-2xl font-bold text-gray-900">Certificates Generated!</h2>
-            <p className="text-gray-600 max-w-md mx-auto">
-              {mappedData.length} certificates have been successfully created and are ready
-              for download as a ZIP file.
+            <p className="text-gray-600">
+              Generation complete! Check the success modal for details.
             </p>
-
-            <div className="bg-green-50 border border-green-200 rounded-lg p-6 mt-6">
-              <div className="flex items-center justify-center gap-2 mb-3">
-                <Download className="text-green-600" size={20} />
-                <span className="font-semibold text-green-900">Your file is ready</span>
-              </div>
-              <p className="text-sm text-green-800 mb-4">
-                Download the ZIP file containing all {mappedData.length} certificates
-              </p>
-            </div>
-
-            <div className="flex gap-3 justify-center pt-6">
-              <Button variant="secondary" onClick={() => setStep('upload')}>
-                Upload Another File
-              </Button>
-              <Button variant="primary" onClick={onGenerationComplete}>
-                Done
-              </Button>
-            </div>
           </div>
         )}
       </div>
+
+      {/* Success Modal with Confetti */}
+      {mappedData && (
+        <SuccessModal
+          isOpen={showSuccessModal}
+          certificateCount={mappedData.length}
+          fileName={template?.name.replace(/\s+/g, '-').toLowerCase() || 'certificates'}
+          templateName={template?.name || 'Certificate'}
+          onClose={() => {
+            setShowSuccessModal(false);
+            onGenerationComplete?.();
+          }}
+          onDownload={() => {
+            // Download is already handled by the backend
+            // This is just a confirmation action
+          }}
+          onNewBatch={() => {
+            setShowSuccessModal(false);
+            setStep('upload');
+            setExcelData(null);
+            setMappedData(null);
+            setError(null);
+          }}
+        />
+      )}
     </div>
   );
 };
