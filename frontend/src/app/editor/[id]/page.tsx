@@ -6,11 +6,12 @@ import { useParams, useRouter } from 'next/navigation';
 import Canvas from '@/components/editor/Canvas';
 import Toolbar from '@/components/editor/Toolbar';
 import PropertyPanel from '@/components/editor/PropertyPanel';
-import AddElementForm from '@/components/editor/AddElementForm';
+import SystemLayoutPicker, { SystemLayoutPreset } from '@/components/editor/SystemLayoutPicker';
 import ExportModal from '@/components/editor/ExportModal';
 import Button from '@/components/shared/Button';
 import Input from '@/components/shared/Input';
 import { Save, Download, Eye, FileText } from 'lucide-react';
+import { CertificateElement } from '@/types/CertificateTemplate';
 
 /**
  * Editor Page
@@ -31,12 +32,120 @@ export default function EditorPage() {
   const template = useEditorStore((state) => state.template);
   const setTemplate = useEditorStore((state) => state.setTemplate);
   const updateTemplateMetadata = useEditorStore((state) => state.updateTemplateMetadata);
+  const reorderElements = useEditorStore((state) => state.reorderElements);
   const selectedElementId = useEditorStore((state) => state.selectedElementId);
+  const setSelectedElementId = useEditorStore((state) => state.setSelectedElementId);
   const elements = useEditorStore((state) => state.elements);
 
   const [isSaving, setIsSaving] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
+  const [activePresetId, setActivePresetId] = useState<string | null>(null);
+
+  const createTextElement = (
+    id: string,
+    label: string,
+    content: string,
+    x: number,
+    y: number,
+    width: number,
+    height: number,
+    fontSize: number,
+    fontWeight: 'normal' | 'bold' | '500' | '600' | '700' = 'normal'
+  ): CertificateElement => ({
+    id,
+    type: 'text',
+    label,
+    x,
+    y,
+    width,
+    height,
+    rotation: 0,
+    zIndex: 1,
+    visible: true,
+    content,
+    fontSize,
+    fontFamily: 'Arial',
+    fontWeight,
+    color: '#111827',
+    textAlign: 'center',
+    lineHeight: 1.3,
+  });
+
+  const systemPresets: SystemLayoutPreset[] = [
+    {
+      id: 'classic-award',
+      name: 'Classic Award',
+      description: 'Centered title with recipient name and date.',
+      variables: ['{{Name}}', '{{Title}}', '{{Date}}'],
+      elements: [
+        {
+          id: 'classic-border',
+          type: 'shape',
+          label: 'Border',
+          x: 3,
+          y: 3,
+          width: 94,
+          height: 94,
+          rotation: 0,
+          zIndex: 0,
+          visible: true,
+          shapeType: 'rectangle',
+          backgroundColor: '#ffffff',
+          borderColor: '#1f2937',
+          borderWidth: 2,
+        },
+        createTextElement('classic-title', 'Title', 'Certificate of Achievement', 15, 14, 70, 10, 34, 'bold'),
+        createTextElement('classic-subtitle', 'Subtitle', 'This certificate is proudly presented to', 20, 29, 60, 6, 16),
+        createTextElement('classic-name', 'Recipient', '{{Name}}', 18, 38, 64, 10, 40, 'bold'),
+        createTextElement('classic-desc', 'Description', 'For outstanding performance as {{Title}}', 18, 50, 64, 7, 18),
+        createTextElement('classic-date', 'Date', 'Date: {{Date}}', 38, 74, 24, 5, 14),
+      ],
+    },
+    {
+      id: 'modern-minimal',
+      name: 'Modern Minimal',
+      description: 'Clean left-aligned modern design.',
+      variables: ['{{Name}}', '{{Company}}', '{{Date}}'],
+      elements: [
+        {
+          id: 'modern-accent',
+          type: 'shape',
+          label: 'Accent Bar',
+          x: 6,
+          y: 10,
+          width: 2,
+          height: 78,
+          rotation: 0,
+          zIndex: 0,
+          visible: true,
+          shapeType: 'rectangle',
+          backgroundColor: '#2563eb',
+          borderColor: '#2563eb',
+          borderWidth: 0,
+        },
+        createTextElement('modern-title', 'Title', 'CERTIFICATE', 12, 16, 60, 8, 34, 'bold'),
+        createTextElement('modern-subtitle', 'Subtitle', 'Presented to', 12, 29, 30, 5, 16),
+        createTextElement('modern-name', 'Recipient', '{{Name}}', 12, 36, 70, 9, 38, 'bold'),
+        createTextElement('modern-company', 'Company', '{{Company}}', 12, 49, 50, 6, 20),
+        createTextElement('modern-date', 'Date', '{{Date}}', 12, 77, 24, 5, 14),
+      ],
+    },
+    {
+      id: 'completion-pro',
+      name: 'Completion Pro',
+      description: 'Training/course completion style layout.',
+      variables: ['{{Name}}', '{{Title}}', '{{Date}}', '{{Company}}'],
+      elements: [
+        createTextElement('completion-title', 'Title', 'Certificate of Completion', 14, 14, 72, 9, 32, 'bold'),
+        createTextElement('completion-subtitle', 'Subtitle', 'This certifies that', 30, 28, 40, 5, 16),
+        createTextElement('completion-name', 'Name', '{{Name}}', 18, 36, 64, 9, 38, 'bold'),
+        createTextElement('completion-body', 'Body', 'has successfully completed {{Title}} at {{Company}}', 14, 48, 72, 8, 18),
+        createTextElement('completion-date-label', 'Date Label', 'Issued on', 38, 71, 24, 4, 13),
+        createTextElement('completion-date', 'Date', '{{Date}}', 35, 75, 30, 5, 16, 'bold'),
+      ],
+    },
+  ];
 
   const selectedElement = elements.find((el) => el.id === selectedElementId) || null;
 
@@ -90,6 +199,26 @@ export default function EditorPage() {
   const handleBulkGenerate = () => {
     if (!template) return;
     router.push('/bulk-generate');
+  };
+
+  const handleApplyPreset = (preset: SystemLayoutPreset) => {
+    if (!template) return;
+
+    const withIndexes = preset.elements.map((element, index) => ({
+      ...element,
+      id: `${preset.id}-${index}-${Date.now()}`,
+      zIndex: index,
+    }));
+
+    reorderElements(withIndexes);
+    setSelectedElementId(null);
+    setActivePresetId(preset.id);
+    setTemplate({
+      ...template,
+      elements: withIndexes,
+      variables: preset.variables,
+      updatedAt: new Date(),
+    });
   };
 
   if (!template) {
@@ -154,8 +283,14 @@ export default function EditorPage() {
 
       {/* Main Editor */}
       <div className="flex flex-1 overflow-hidden">
-        {/* Left Panel: Add Elements */}
-        {!showPreview && <AddElementForm />}
+        {/* Left Panel: System Layout Picker */}
+        {!showPreview && (
+          <SystemLayoutPicker
+            presets={systemPresets}
+            activePresetId={activePresetId}
+            onApplyPreset={handleApplyPreset}
+          />
+        )}
 
         {/* Center: Canvas */}
         <Canvas orientation={template.orientation} backgroundColor={template.backgroundColor} />

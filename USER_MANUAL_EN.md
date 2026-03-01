@@ -145,13 +145,14 @@ If this is your first time, click **Create First Template** or **New Template**.
    - **Background Color**
 3. Click **Create Template**.
 4. You will be taken to the editor screen.
+5. Choose one of the **System Layouts** from the left panel.
 
 ---
 
 ## 6) Design Your Certificate in the Editor
 
 On the editor screen, you can:
-- Add certificate elements from the left panel
+- Select a ready-made layout from **System Layouts** (left panel)
 - Select an element and edit its properties on the right panel
 - Move/resize items on the canvas
 
