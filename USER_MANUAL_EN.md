@@ -155,8 +155,9 @@ On the editor screen, you can:
 - Select certificate type: **Digital**, **Minimal**, or **Modern**
 - Select A4 mode: **Portrait** or **Landscape**
 - Select a ready-made layout from **System Layouts** (left panel)
-- Select an element and edit its properties on the right panel
+- Select an element and edit its properties in the **left-side Quick Edit** area
 - Move/resize items on the canvas
+- Use **Guides** and **Snap** buttons for easier alignment
 
 Important:
 - Every certificate includes a system-defined outer boundary area to keep the page clearly visible.
@@ -169,7 +170,7 @@ Top buttons:
 - **Save**: save your current template
 
 ### Recommended workflow
-1. Add all fields and text
+1. Choose template type and layout
 2. Check alignment and spacing
 3. Click **Preview** to review
 4. Click **Save**

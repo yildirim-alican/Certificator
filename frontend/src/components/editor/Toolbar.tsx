@@ -18,6 +18,10 @@ const Toolbar: React.FC = () => {
   const selectedElementId = useEditorStore((state) => state.selectedElementId);
   const deleteElement = useEditorStore((state) => state.deleteElement);
   const elements = useEditorStore((state) => state.elements);
+  const showGuides = useEditorStore((state) => state.showGuides);
+  const setShowGuides = useEditorStore((state) => state.setShowGuides);
+  const snapToGrid = useEditorStore((state) => state.snapToGrid);
+  const setSnapToGrid = useEditorStore((state) => state.setSnapToGrid);
   const selectedElement = elements.find((element) => element.id === selectedElementId);
   const isSystemBoundarySelected = !!selectedElement?.id.startsWith('system-boundary-');
 
@@ -67,6 +71,20 @@ const Toolbar: React.FC = () => {
       </div>
 
       <div className="border-l border-gray-200 h-6" />
+
+      <button
+        onClick={() => setShowGuides(!showGuides)}
+        className={`px-3 py-2 text-sm rounded-lg transition ${showGuides ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-700'}`}
+      >
+        Guides
+      </button>
+
+      <button
+        onClick={() => setSnapToGrid(!snapToGrid)}
+        className={`px-3 py-2 text-sm rounded-lg transition ${snapToGrid ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-700'}`}
+      >
+        Snap
+      </button>
 
       {selectedElementId && (
         <button

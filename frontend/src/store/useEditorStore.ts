@@ -27,6 +27,10 @@ interface EditorStoreState {
   // View State
   isDragging: boolean;
   setIsDragging: (isDragging: boolean) => void;
+  showGuides: boolean;
+  setShowGuides: (showGuides: boolean) => void;
+  snapToGrid: boolean;
+  setSnapToGrid: (snapToGrid: boolean) => void;
 
   // Reset
   reset: () => void;
@@ -73,6 +77,12 @@ export const useEditorStore = create<EditorStoreState>((set) => ({
   isDragging: false,
   setIsDragging: (isDragging) => set({ isDragging }),
 
+  showGuides: true,
+  setShowGuides: (showGuides) => set({ showGuides }),
+
+  snapToGrid: true,
+  setSnapToGrid: (snapToGrid) => set({ snapToGrid }),
+
   reset: () =>
     set({
       template: null,
@@ -81,5 +91,7 @@ export const useEditorStore = create<EditorStoreState>((set) => ({
       scale: 1,
       offset: { x: 0, y: 0 },
       isDragging: false,
+      showGuides: true,
+      snapToGrid: true,
     }),
 }));

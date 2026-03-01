@@ -5,8 +5,8 @@ import { useEditorStore } from '@/store/useEditorStore';
 import { useParams, useRouter } from 'next/navigation';
 import Canvas from '@/components/editor/Canvas';
 import Toolbar from '@/components/editor/Toolbar';
-import PropertyPanel from '@/components/editor/PropertyPanel';
 import SystemLayoutPicker from '@/components/editor/SystemLayoutPicker';
+import InlineElementEditor from '@/components/editor/InlineElementEditor';
 import ExportModal from '@/components/editor/ExportModal';
 import Button from '@/components/shared/Button';
 import Input from '@/components/shared/Input';
@@ -228,22 +228,22 @@ export default function EditorPage() {
 
       {/* Main Editor */}
       <div className="flex flex-col lg:flex-row flex-1 overflow-hidden">
-        {/* Left Panel: System Layout Picker */}
         {!showPreview && (
-          <SystemLayoutPicker
-            presets={systemLayoutPresets}
-            activePresetId={activePresetId}
-            activeOrientation={activeOrientation}
-            onApplyPreset={handleApplyPreset}
-            onOrientationChange={handleOrientationChange}
-          />
+          <div className="w-full lg:w-80 bg-white border-b lg:border-b-0 lg:border-r border-gray-200 p-4 lg:p-6 overflow-y-auto max-h-screen">
+            <SystemLayoutPicker
+              presets={systemLayoutPresets}
+              activePresetId={activePresetId}
+              activeOrientation={activeOrientation}
+              onApplyPreset={handleApplyPreset}
+              onOrientationChange={handleOrientationChange}
+            />
+            <InlineElementEditor element={selectedElement} />
+          </div>
         )}
 
         {/* Center: Canvas */}
         <Canvas orientation={template.orientation} backgroundColor={template.backgroundColor} />
 
-        {/* Right Panel: Properties */}
-        {!showPreview && selectedElement && <PropertyPanel element={selectedElement} />}
       </div>
 
       {/* Toolbar */}

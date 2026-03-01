@@ -32,7 +32,7 @@ const SystemLayoutPicker: React.FC<SystemLayoutPickerProps> = ({
   );
 
   return (
-    <div className="w-full lg:w-80 bg-white border-b lg:border-b-0 lg:border-r border-gray-200 p-4 lg:p-6 overflow-y-auto max-h-screen">
+    <div>
       <h3 className="text-lg font-semibold text-gray-900 mb-2">System Layouts</h3>
       <p className="text-sm text-gray-600 mb-6">
         Choose a ready-made certificate layout created by the system.
