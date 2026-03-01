@@ -2,6 +2,7 @@
 
 import React, { useRef, useMemo, useState } from 'react';
 import { CertificateElement } from '@/types/CertificateTemplate';
+import { useEditorStore } from '@/store/useEditorStore';
 
 interface DraggableItemProps {
   element: CertificateElement;
@@ -9,6 +10,7 @@ interface DraggableItemProps {
   onSelect: (e: React.MouseEvent) => void;
   onDrag: (deltaX: number, deltaY: number) => void;
   onResize: (width: number, height: number) => void;
+  onDragEnd?: () => void;
   scale: number;
   canvasWidth: number;
   canvasHeight: number;
@@ -28,7 +30,18 @@ type ResizeHandle = 'nw' | 'ne' | 'se' | 'sw' | 'n' | 'e' | 's' | 'w' | null;
  * Prevents unnecessary re-renders of non-selected elements.
  */
 const DraggableItem = React.memo<DraggableItemProps>(
-  ({ element, isSelected, onSelect, onDrag, onResize, scale, canvasWidth, canvasHeight }) => {
+  ({
+    element,
+    isSelected,
+    onSelect,
+    onDrag,
+    onResize,
+    onDragEnd,
+    scale,
+    canvasWidth,
+    canvasHeight,
+  }) => {
+    const selectionColor = useEditorStore((state) => state.selectionColor);
     const [isDragging, setIsDragging] = useState(false);
     const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
     const [resizeHandle, setResizeHandle] = useState<ResizeHandle>(null);
@@ -42,9 +55,11 @@ const DraggableItem = React.memo<DraggableItemProps>(
 
       if (handle) {
         e.preventDefault();
+        e.stopPropagation();
         setResizeHandle(handle);
         setDragStart({ x: e.clientX, y: e.clientY });
       } else {
+        e.stopPropagation();
         onSelect(e);
         setIsDragging(true);
         setDragStart({ x: e.clientX, y: e.clientY });
@@ -81,6 +96,7 @@ const DraggableItem = React.memo<DraggableItemProps>(
     const handleMouseUp = () => {
       setIsDragging(false);
       setResizeHandle(null);
+      onDragEnd?.();
     };
 
     const containerStyle: React.CSSProperties = useMemo(
@@ -111,8 +127,8 @@ const DraggableItem = React.memo<DraggableItemProps>(
 
     const borderStyle: React.CSSProperties = isSelected
       ? {
-          border: '2px solid #3b82f6',
-          boxShadow: 'inset 0 0 0 1px #dbeafe',
+          border: `2px solid ${selectionColor}`,
+          boxShadow: `inset 0 0 0 1px ${selectionColor}33`,
           outlineOffset: '-2px',
         }
       : {
@@ -127,7 +143,7 @@ const DraggableItem = React.memo<DraggableItemProps>(
           position: 'absolute',
           width: '10px',
           height: '10px',
-          backgroundColor: '#3b82f6',
+          backgroundColor: selectionColor,
           border: '1px solid white',
           borderRadius: '2px',
           cursor: `${handle}-resize`,
@@ -145,11 +161,21 @@ const DraggableItem = React.memo<DraggableItemProps>(
       />
     );
 
+    const shadowStyle = element.shadowBlur
+      ? `${element.shadowX || 0}px ${element.shadowY || 0}px ${element.shadowBlur || 0}px ${
+          element.shadowColor || 'rgba(0,0,0,0.25)'
+        }`
+      : 'none';
+
     return (
       <div
         ref={elementRef}
         style={containerStyle}
         onMouseDown={handleMouseDown}
+        onClick={(e) => {
+          e.stopPropagation();
+          onSelect(e);
+        }}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseUp}
@@ -174,6 +200,7 @@ const DraggableItem = React.memo<DraggableItemProps>(
                   color: element.color,
                   textAlign: element.textAlign as any,
                   lineHeight: element.lineHeight,
+                  letterSpacing: `${element.letterSpacing || 0}px`,
                   width: '100%',
                   height: '100%',
                   display: 'flex',
@@ -182,6 +209,8 @@ const DraggableItem = React.memo<DraggableItemProps>(
                   padding: '8px',
                   boxSizing: 'border-box',
                   wordWrap: 'break-word',
+                  opacity: element.opacity ?? 1,
+                  textShadow: shadowStyle,
                 }}
               >
                 {element.content}
@@ -196,7 +225,8 @@ const DraggableItem = React.memo<DraggableItemProps>(
                   width: '100%',
                   height: '100%',
                   objectFit: element.objectFit as any,
-                  opacity: element.opacity,
+                  opacity: element.opacity ?? 1,
+                  filter: element.shadowBlur ? `drop-shadow(${shadowStyle})` : undefined,
                 }}
               />
             )}
@@ -207,8 +237,18 @@ const DraggableItem = React.memo<DraggableItemProps>(
                   width: '100%',
                   height: '100%',
                   backgroundColor: element.backgroundColor,
-                  border: `${element.borderWidth}px solid ${element.borderColor}`,
+                  border:
+                    element.strokePosition === 'outside'
+                      ? 'none'
+                      : `${element.borderWidth || 0}px solid ${element.borderColor || '#000000'}`,
+                  outline:
+                    element.strokePosition === 'outside'
+                      ? `${element.borderWidth || 0}px solid ${element.borderColor || '#000000'}`
+                      : undefined,
+                  boxSizing: element.strokePosition === 'inside' ? 'border-box' : 'content-box',
                   borderRadius: element.shapeType === 'circle' ? '50%' : '0',
+                  opacity: element.opacity ?? 1,
+                  boxShadow: shadowStyle,
                 }}
               />
             )}

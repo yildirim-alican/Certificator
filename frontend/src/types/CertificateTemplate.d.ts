@@ -19,6 +19,7 @@ export interface CertificateElement {
   color?: string;
   textAlign?: 'left' | 'center' | 'right';
   lineHeight?: number;
+  letterSpacing?: number;
 
   // Image-specific
   src?: string;
@@ -29,7 +30,14 @@ export interface CertificateElement {
   shapeType?: 'rectangle' | 'circle' | 'line';
   borderColor?: string;
   borderWidth?: number;
+  strokePosition?: 'inside' | 'center' | 'outside';
   backgroundColor?: string;
+
+  // Effects
+  shadowColor?: string;
+  shadowX?: number;
+  shadowY?: number;
+  shadowBlur?: number;
 }
 
 export interface CertificateTemplate {

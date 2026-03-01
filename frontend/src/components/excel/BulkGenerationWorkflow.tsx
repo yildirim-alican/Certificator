@@ -47,8 +47,14 @@ export const BulkGenerationWorkflow: React.FC<BulkGenerationProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const allowedVariables = ['[recipient.name]', '[recipient.surname]', '[certificate.success_rate]'];
 
-  const templateVariables = template?.variables || [];
+  const templateVariables = (() => {
+    const filtered = (template?.variables || []).filter((variable) =>
+      allowedVariables.includes(variable)
+    );
+    return filtered.length > 0 ? filtered : ['[recipient.name]', '[recipient.surname]'];
+  })();
 
   // Step 1: File Upload
   const handleFileSelect = async (file: File) => {

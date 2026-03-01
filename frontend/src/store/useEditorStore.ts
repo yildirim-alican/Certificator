@@ -31,6 +31,8 @@ interface EditorStoreState {
   setShowGuides: (showGuides: boolean) => void;
   snapToGrid: boolean;
   setSnapToGrid: (snapToGrid: boolean) => void;
+  selectionColor: string;
+  setSelectionColor: (selectionColor: string) => void;
 
   // Reset
   reset: () => void;
@@ -83,6 +85,9 @@ export const useEditorStore = create<EditorStoreState>((set) => ({
   snapToGrid: true,
   setSnapToGrid: (snapToGrid) => set({ snapToGrid }),
 
+  selectionColor: '#3b82f6',
+  setSelectionColor: (selectionColor) => set({ selectionColor }),
+
   reset: () =>
     set({
       template: null,
@@ -93,5 +98,6 @@ export const useEditorStore = create<EditorStoreState>((set) => ({
       isDragging: false,
       showGuides: true,
       snapToGrid: true,
+      selectionColor: '#3b82f6',
     }),
 }));

@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useEditorStore } from '@/store/useEditorStore';
+import { useTemplateStore } from '@/store/useTemplateStore';
 import { useParams, useRouter } from 'next/navigation';
 import Canvas from '@/components/editor/Canvas';
 import Toolbar from '@/components/editor/Toolbar';
@@ -10,7 +11,8 @@ import InlineElementEditor from '@/components/editor/InlineElementEditor';
 import ExportModal from '@/components/editor/ExportModal';
 import Button from '@/components/shared/Button';
 import Input from '@/components/shared/Input';
-import { Save, Download, Eye, FileText } from 'lucide-react';
+import { Save, Download, Eye, FileText, Home } from 'lucide-react';
+import { CertificateElement } from '@/types/CertificateTemplate';
 import {
   LayoutOrientation,
   SystemLayoutPreset,
@@ -43,12 +45,19 @@ export default function EditorPage() {
   const selectedElementId = useEditorStore((state) => state.selectedElementId);
   const setSelectedElementId = useEditorStore((state) => state.setSelectedElementId);
   const elements = useEditorStore((state) => state.elements);
+  const addTemplate = useTemplateStore((state) => state.addTemplate);
+  const updateTemplateInStore = useTemplateStore((state) => state.updateTemplate);
+  const templates = useTemplateStore((state) => state.templates);
 
   const [isSaving, setIsSaving] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
   const [activePresetId, setActivePresetId] = useState<string | null>(null);
   const [activeOrientation, setActiveOrientation] = useState<LayoutOrientation>('landscape');
+  const [issuerLogoSrc, setIssuerLogoSrc] = useState<string>('');
+  const [sponsorLogoSrc, setSponsorLogoSrc] = useState<string>('');
+
+  const ALLOWED_VARIABLES = ['[recipient.name]', '[recipient.surname]', '[certificate.success_rate]'];
 
   const selectedElement = elements.find((el) => el.id === selectedElementId) || null;
 
@@ -65,7 +74,7 @@ export default function EditorPage() {
         height: 210,
         backgroundColor: '#ffffff',
         elements: [],
-        variables: [],
+        variables: ['[recipient.name]', '[recipient.surname]'],
         createdAt: new Date(),
         updatedAt: new Date(),
       });
@@ -84,6 +93,15 @@ export default function EditorPage() {
 
       // Simulate API delay
       await new Promise((resolve) => setTimeout(resolve, 1000));
+
+      if (template) {
+        const exists = templates.some((entry) => entry.id === template.id);
+        if (exists) {
+          updateTemplateInStore(template.id, template);
+        } else {
+          addTemplate(template);
+        }
+      }
 
       // Show success message
       alert('Template saved successfully!');
@@ -107,8 +125,29 @@ export default function EditorPage() {
   const handleApplyPreset = (preset: SystemLayoutPreset) => {
     if (!template) return;
 
-    const withBoundary = preset.elements.some((element) => element.id.startsWith('system-boundary-'))
-      ? preset.elements
+    const defaultLogoWidth = preset.orientation === 'landscape' ? 12 : 20;
+    const defaultLogoHeight = preset.orientation === 'landscape' ? 12 : 10;
+    const issuerLogoX = preset.orientation === 'landscape' ? 6 : 8;
+    const sponsorLogoX = preset.orientation === 'landscape' ? 82 : 72;
+    const logoY = preset.orientation === 'landscape' ? 80 : 84;
+
+    const sanitizedPresetElements: CertificateElement[] = preset.elements.map((element) => {
+      if (element.type !== 'text') {
+        return element;
+      }
+
+      return {
+        ...element,
+        content: (element.content || '')
+          .replace(/\[certificate\.issued_on\]/g, '[recipient.surname]')
+          .replace(/\[certificate\.uuid\]/g, '[certificate.success_rate]'),
+      };
+    });
+
+    const withBoundary = sanitizedPresetElements.some((element) =>
+      element.id.startsWith('system-boundary-')
+    )
+      ? sanitizedPresetElements
       : [
           {
             id: `system-boundary-${preset.id}`,
@@ -126,17 +165,117 @@ export default function EditorPage() {
             borderColor: '#1f2937',
             borderWidth: 2,
           },
-          ...preset.elements,
+          ...sanitizedPresetElements,
         ];
 
+    const withCoreZones: CertificateElement[] = [...withBoundary];
+
+    if (!withCoreZones.some((element) => element.label.toLowerCase().includes('issuer logo'))) {
+      withCoreZones.push({
+        id: `${preset.id}-issuer-logo`,
+        type: 'image',
+        label: 'Issuer Logo',
+        x: issuerLogoX,
+        y: logoY,
+        width: defaultLogoWidth,
+        height: defaultLogoHeight,
+        rotation: 0,
+        zIndex: 10,
+        visible: true,
+        src: issuerLogoSrc,
+        objectFit: 'contain',
+        opacity: 1,
+      });
+    }
+
+    if (!withCoreZones.some((element) => element.label.toLowerCase().includes('sponsor logo'))) {
+      withCoreZones.push({
+        id: `${preset.id}-sponsor-logo`,
+        type: 'image',
+        label: 'Sponsor Logo',
+        x: sponsorLogoX,
+        y: logoY,
+        width: defaultLogoWidth,
+        height: defaultLogoHeight,
+        rotation: 0,
+        zIndex: 11,
+        visible: true,
+        src: sponsorLogoSrc,
+        objectFit: 'contain',
+        opacity: 1,
+      });
+    }
+
+    if (
+      !withCoreZones.some(
+        (element) => element.type === 'text' && (element.content || '').includes('[recipient.surname]')
+      )
+    ) {
+      withCoreZones.push({
+        id: `${preset.id}-recipient-surname`,
+        type: 'text',
+        label: 'Recipient Surname',
+        x: preset.orientation === 'landscape' ? 41 : 30,
+        y: preset.orientation === 'landscape' ? 90 : 93,
+        width: 20,
+        height: 4,
+        rotation: 0,
+        zIndex: 12,
+        visible: true,
+        content: '[recipient.surname]',
+        fontSize: 11,
+        fontFamily: 'Arial',
+        fontWeight: '600',
+        color: '#4b5563',
+        textAlign: 'center',
+        lineHeight: 1.3,
+      });
+    }
+
     const now = Date.now();
-    const withIndexes = withBoundary.map((element, index) => ({
-      ...element,
-      id: element.id.startsWith('system-boundary-')
+    const withIndexes: CertificateElement[] = withCoreZones.map((element, index) => {
+      const nextId = element.id.startsWith('system-boundary-')
         ? `system-boundary-${preset.id}-${now}`
-        : `${preset.id}-${index}-${now}`,
-      zIndex: index,
-    }));
+        : `${preset.id}-${index}-${now}`;
+
+      if (element.type === 'image') {
+        const nextSrc = element.label.toLowerCase().includes('issuer logo')
+          ? issuerLogoSrc || element.src
+          : element.label.toLowerCase().includes('sponsor logo')
+            ? sponsorLogoSrc || element.src
+            : element.src;
+
+        return {
+          ...element,
+          id: nextId,
+          src: nextSrc,
+          zIndex: index,
+        };
+      }
+
+      return {
+        ...element,
+        id: nextId,
+        zIndex: index,
+      };
+    });
+
+    const variablesFromElements = Array.from(
+      new Set(
+        withIndexes
+          .filter((element) => element.type === 'text')
+          .map((element) => (element.type === 'text' ? element.content || '' : ''))
+          .filter((content) => ALLOWED_VARIABLES.includes(content))
+      )
+    );
+
+    const normalizedVariables = [
+      '[recipient.name]',
+      '[recipient.surname]',
+      ...variablesFromElements.filter(
+        (variable) => variable !== '[recipient.name]' && variable !== '[recipient.surname]'
+      ),
+    ];
 
     reorderElements(withIndexes);
     setSelectedElementId(null);
@@ -148,8 +287,40 @@ export default function EditorPage() {
       width: preset.orientation === 'landscape' ? 297 : 210,
       height: preset.orientation === 'landscape' ? 210 : 297,
       elements: withIndexes,
-      variables: preset.variables,
+      variables: normalizedVariables,
       updatedAt: new Date(),
+    });
+  };
+
+  const readFileAsDataUrl = (file: File, onDone: (dataUrl: string) => void) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === 'string') {
+        onDone(reader.result);
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleIssuerLogoUpload = (file: File) => {
+    readFileAsDataUrl(file, (dataUrl) => {
+      setIssuerLogoSrc(dataUrl);
+      elements
+        .filter((element) => element.type === 'image' && element.label.toLowerCase().includes('issuer logo'))
+        .forEach((element) => {
+          useEditorStore.getState().updateElement(element.id, { src: dataUrl });
+        });
+    });
+  };
+
+  const handleSponsorLogoUpload = (file: File) => {
+    readFileAsDataUrl(file, (dataUrl) => {
+      setSponsorLogoSrc(dataUrl);
+      elements
+        .filter((element) => element.type === 'image' && element.label.toLowerCase().includes('sponsor logo'))
+        .forEach((element) => {
+          useEditorStore.getState().updateElement(element.id, { src: dataUrl });
+        });
     });
   };
 
@@ -177,50 +348,74 @@ export default function EditorPage() {
   return (
     <div className="min-h-screen flex flex-col bg-gray-100">
       {/* Header */}
-      <header className="bg-white border-b border-gray-200 shadow-sm">
-        <div className="px-4 lg:px-6 py-4 flex flex-col lg:flex-row lg:items-center gap-3 lg:justify-between">
-          <div className="flex-1">
+      <header className="sticky top-0 z-30 bg-white/95 backdrop-blur border-b border-gray-200 shadow-sm">
+        <div className="px-4 lg:px-6 py-3 space-y-3">
+          <div className="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-3">
+            <div className="flex flex-wrap items-center gap-2">
+              <Button
+                variant="secondary"
+                onClick={() => router.push('/')}
+                className="flex items-center gap-2"
+              >
+                <Home size={18} />
+                Main Menu
+              </Button>
+              <span className="px-2.5 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-700 border border-gray-200">
+                {template.orientation === 'landscape' ? 'A4 Landscape' : 'A4 Portrait'}
+              </span>
+              <span className="px-2.5 py-1 text-xs font-semibold rounded-full bg-blue-50 text-blue-700 border border-blue-100">
+                {elements.length} Elements
+              </span>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2">
+              <Button
+                variant="secondary"
+                onClick={() => setShowPreview(!showPreview)}
+                className="flex items-center gap-2"
+              >
+                <Eye size={18} />
+                {showPreview ? 'Edit Mode' : 'Preview'}
+              </Button>
+              <Button
+                variant="secondary"
+                onClick={handleDownloadPDF}
+                className="flex items-center gap-2"
+              >
+                <Download size={18} />
+                Export PDF
+              </Button>
+              <Button
+                variant="secondary"
+                onClick={handleBulkGenerate}
+                className="flex items-center gap-2"
+              >
+                <FileText size={18} />
+                Bulk Generate
+              </Button>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 xl:grid-cols-[1fr_1fr_auto] gap-2 items-center">
             <Input
               value={template.name}
               onChange={(e) => updateTemplateMetadata(e.target.value, template.description)}
-              className="text-lg font-semibold"
+              className="text-base font-semibold"
               placeholder="Template name"
             />
-          </div>
-
-          <div className="flex flex-wrap items-center gap-2 lg:gap-3">
-            <Button
-              variant="secondary"
-              onClick={() => setShowPreview(!showPreview)}
-              className="flex items-center gap-2"
-            >
-              <Eye size={18} />
-              {showPreview ? 'Edit' : 'Preview'}
-            </Button>
-            <Button
-              variant="secondary"
-              onClick={handleDownloadPDF}
-              className="flex items-center gap-2"
-            >
-              <Download size={18} />
-              Export PDF
-            </Button>
-            <Button
-              variant="secondary"
-              onClick={handleBulkGenerate}
-              className="flex items-center gap-2"
-            >
-              <FileText size={18} />
-              Bulk Generate
-            </Button>
+            <Input
+              value={template.description || ''}
+              onChange={(e) => updateTemplateMetadata(template.name, e.target.value)}
+              placeholder="Template description"
+            />
             <Button
               variant="primary"
               onClick={handleSave}
-              disabled={isSaving}
-              className="flex items-center gap-2"
+              disabled={isSaving || !template.name.trim()}
+              className="flex items-center justify-center gap-2 xl:min-w-[140px]"
             >
               <Save size={18} />
-              {isSaving ? 'Saving...' : 'Save'}
+              {isSaving ? 'Creating...' : 'Create'}
             </Button>
           </div>
         </div>
@@ -236,6 +431,8 @@ export default function EditorPage() {
               activeOrientation={activeOrientation}
               onApplyPreset={handleApplyPreset}
               onOrientationChange={handleOrientationChange}
+              onIssuerLogoUpload={handleIssuerLogoUpload}
+              onSponsorLogoUpload={handleSponsorLogoUpload}
             />
             <InlineElementEditor element={selectedElement} />
           </div>

@@ -15,6 +15,8 @@ interface SystemLayoutPickerProps {
   activeOrientation: LayoutOrientation;
   onApplyPreset: (preset: SystemLayoutPreset) => void;
   onOrientationChange: (orientation: LayoutOrientation) => void;
+  onIssuerLogoUpload: (file: File) => void;
+  onSponsorLogoUpload: (file: File) => void;
 }
 
 const SystemLayoutPicker: React.FC<SystemLayoutPickerProps> = ({
@@ -23,6 +25,8 @@ const SystemLayoutPicker: React.FC<SystemLayoutPickerProps> = ({
   activeOrientation,
   onApplyPreset,
   onOrientationChange,
+  onIssuerLogoUpload,
+  onSponsorLogoUpload,
 }) => {
   const [activeCategory, setActiveCategory] = useState<LayoutCategory>('digital');
 
@@ -82,6 +86,33 @@ const SystemLayoutPicker: React.FC<SystemLayoutPickerProps> = ({
           >
             Modern
           </Button>
+        </div>
+      </div>
+
+      <div className="mb-6">
+        <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Brand Assets</div>
+        <div className="space-y-2">
+          <label className="block text-xs text-gray-600">Issuer Logo</label>
+          <input
+            type="file"
+            accept="image/*"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) onIssuerLogoUpload(file);
+            }}
+            className="w-full text-xs border border-gray-300 rounded px-2 py-2"
+          />
+
+          <label className="block text-xs text-gray-600 mt-2">Sponsor Logo</label>
+          <input
+            type="file"
+            accept="image/*"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) onSponsorLogoUpload(file);
+            }}
+            className="w-full text-xs border border-gray-300 rounded px-2 py-2"
+          />
         </div>
       </div>
 
