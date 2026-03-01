@@ -1,5 +1,6 @@
 import os
 from typing import Optional
+from pydantic import field_validator
 from pydantic_settings import BaseSettings
 
 
@@ -15,7 +16,14 @@ class Settings(BaseSettings):
     CORS_ORIGINS: list = ["http://localhost:3000", "http://localhost:8000"]
 
     # Database
-    DATABASE_URL: str = os.getenv("DATABASE_URL", "sqlite:///./certificator.db")
+    DATABASE_URL: str = os.getenv("DATABASE_URL", "sqlite+aiosqlite:///./certificator.db")
+
+    @field_validator("DATABASE_URL", mode="before")
+    @classmethod
+    def normalize_async_database_url(cls, value: str) -> str:
+        if isinstance(value, str) and value.startswith("sqlite:///") and not value.startswith("sqlite+aiosqlite:///"):
+            return value.replace("sqlite:///", "sqlite+aiosqlite:///", 1)
+        return value
 
     # PDF & Playwright
     PDF_OUTPUT_DPI: int = 300

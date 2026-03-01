@@ -225,7 +225,7 @@ NEXT_PUBLIC_ENVIRONMENT=development
 ### Backend (`.env`)
 ```
 ENV=development
-DATABASE_URL=sqlite:///./certificator.db
+DATABASE_URL=sqlite+aiosqlite:///./certificator.db
 API_V1_PREFIX=/api/v1
 DEBUG=true
 PDF_OUTPUT_DPI=300

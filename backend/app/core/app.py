@@ -3,7 +3,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.middleware.gzip import GZIPMiddleware
+from starlette.middleware.gzip import GZipMiddleware
 
 from app.core.config import settings
 from app.core.pdf_engine import get_pdf_engine
@@ -38,7 +38,7 @@ def create_app() -> FastAPI:
     )
 
     # Middleware
-    app.add_middleware(GZIPMiddleware, minimum_size=1000)
+    app.add_middleware(GZipMiddleware, minimum_size=1000)
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.CORS_ORIGINS,
