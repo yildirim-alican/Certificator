@@ -1,9 +1,10 @@
 'use client';
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useMemo, useEffect } from 'react';
 import { CertificateTemplate } from '@/types/CertificateTemplate';
 import { useExcelParser } from '@/hooks/useExcelParser';
 import { useConfetti } from '@/hooks/useConfetti';
+import { usePrinter } from '@/hooks/usePrinter';
 import ExcelUploader from '@/components/excel/ExcelUploader';
 import ColumnMapper from '@/components/excel/ColumnMapper';
 import DataPreview from '@/components/excel/DataPreview';
@@ -34,6 +35,7 @@ export const BulkGenerationWorkflow: React.FC<BulkGenerationProps> = ({
 }) => {
   const { parseExcel, calculateMappings } = useExcelParser();
   const { triggerConfetti } = useConfetti();
+  const { generatePreview } = usePrinter();
   const containerRef = useRef<HTMLDivElement>(null);
   const [step, setStep] = useState<WorkflowStep>('upload');
   const [excelData, setExcelData] = useState<{
@@ -47,6 +49,9 @@ export const BulkGenerationWorkflow: React.FC<BulkGenerationProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [previewError, setPreviewError] = useState<string | null>(null);
   const allowedVariables = ['[recipient.name]', '[recipient.surname]', '[certificate.success_rate]'];
 
   const templateVariables = (() => {
@@ -55,6 +60,73 @@ export const BulkGenerationWorkflow: React.FC<BulkGenerationProps> = ({
     );
     return filtered.length > 0 ? filtered : ['[recipient.name]', '[recipient.surname]'];
   })();
+
+  const firstMappedRow = useMemo(() => {
+    if (!excelData || excelData.rows.length === 0 || columnMappings.length === 0) return null;
+
+    const sourceRow = excelData.rows[0];
+    const mapped: Record<string, string> = {};
+
+    columnMappings.forEach((mapping) => {
+      if (mapping.templateVariable && templateVariables.includes(mapping.templateVariable)) {
+        mapped[mapping.templateVariable] = sourceRow[mapping.excelColumn] || '';
+      }
+    });
+
+    if (!mapped['[recipient.name]'] && !mapped['[recipient.surname]']) {
+      return null;
+    }
+
+    return mapped;
+  }, [excelData, columnMappings, templateVariables]);
+
+  useEffect(() => {
+    let isCancelled = false;
+
+    const runPreview = async () => {
+      if (!firstMappedRow) {
+        setPreviewUrl(null);
+        setPreviewError(null);
+        return;
+      }
+
+      setPreviewLoading(true);
+      setPreviewError(null);
+      try {
+        const result = await generatePreview(template, firstMappedRow);
+        if (!isCancelled) {
+          if (previewUrl) {
+            URL.revokeObjectURL(previewUrl);
+          }
+          setPreviewUrl(result.url);
+        }
+      } catch (err) {
+        if (!isCancelled) {
+          setPreviewError(err instanceof Error ? err.message : 'Preview could not be generated');
+          setPreviewUrl(null);
+        }
+      } finally {
+        if (!isCancelled) {
+          setPreviewLoading(false);
+        }
+      }
+    };
+
+    const timeoutId = window.setTimeout(runPreview, 300);
+
+    return () => {
+      isCancelled = true;
+      window.clearTimeout(timeoutId);
+    };
+  }, [firstMappedRow, template]);
+
+  useEffect(() => {
+    return () => {
+      if (previewUrl) {
+        URL.revokeObjectURL(previewUrl);
+      }
+    };
+  }, [previewUrl]);
 
   // Step 1: File Upload
   const handleFileSelect = async (file: File) => {
@@ -193,6 +265,42 @@ export const BulkGenerationWorkflow: React.FC<BulkGenerationProps> = ({
             className="bg-blue-500 h-2 rounded-full transition-all duration-300"
             style={{ width: `${((getStepNumber() - 1) / 3) * 100}%` }}
           />
+        </div>
+
+        <div className="mt-5 bg-white border border-gray-200 rounded-lg p-4">
+          <h3 className="text-sm font-semibold text-gray-900 mb-3">
+            Certificate Preview (First Row)
+          </h3>
+
+          {firstMappedRow && (
+            <div className="mb-3 flex flex-wrap gap-2 text-xs">
+              <span className="px-2 py-1 rounded bg-blue-50 text-blue-700 border border-blue-100">
+                Name: {firstMappedRow['[recipient.name]'] || '--'}
+              </span>
+              <span className="px-2 py-1 rounded bg-indigo-50 text-indigo-700 border border-indigo-100">
+                Surname: {firstMappedRow['[recipient.surname]'] || '--'}
+              </span>
+              {firstMappedRow['[certificate.success_rate]'] && (
+                <span className="px-2 py-1 rounded bg-emerald-50 text-emerald-700 border border-emerald-100">
+                  Success Rate: {firstMappedRow['[certificate.success_rate]']}
+                </span>
+              )}
+            </div>
+          )}
+
+          <div className="w-full h-[300px] border border-gray-200 rounded bg-gray-50 overflow-hidden flex items-center justify-center">
+            {previewLoading ? (
+              <p className="text-sm text-gray-600">Generating preview...</p>
+            ) : previewError ? (
+              <p className="text-sm text-red-600 px-4 text-center">{previewError}</p>
+            ) : previewUrl ? (
+              <iframe src={previewUrl} title="Bulk first-row certificate preview" className="w-full h-full" />
+            ) : (
+              <p className="text-sm text-gray-500 px-4 text-center">
+                Upload file and complete column mapping to see first-record certificate preview.
+              </p>
+            )}
+          </div>
         </div>
       </div>
 

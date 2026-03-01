@@ -1,8 +1,9 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useEditorStore } from '@/store/useEditorStore';
+import { useTemplateStore } from '@/store/useTemplateStore';
 import BulkGenerationWorkflow from '@/components/excel/BulkGenerationWorkflow';
 import Button from '@/components/shared/Button';
 import { ArrowLeft, AlertCircle } from 'lucide-react';
@@ -20,10 +21,24 @@ import { ArrowLeft, AlertCircle } from 'lucide-react';
  */
 export default function BulkGeneratePage() {
   const router = useRouter();
-  const template = useEditorStore((state) => state.template);
+  const editorTemplate = useEditorStore((state) => state.template);
+  const savedTemplates = useTemplateStore((state) => state.templates);
   const [generationError, setGenerationError] = useState<string | null>(null);
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string>(
+    editorTemplate?.id || savedTemplates[0]?.id || ''
+  );
 
-  if (!template) {
+  const templateOptions = useMemo(() => {
+    const options = [...savedTemplates];
+    if (editorTemplate && !options.some((entry) => entry.id === editorTemplate.id)) {
+      options.unshift(editorTemplate);
+    }
+    return options;
+  }, [savedTemplates, editorTemplate]);
+
+  const selectedTemplate = templateOptions.find((template) => template.id === selectedTemplateId);
+
+  if (!selectedTemplate && templateOptions.length === 0) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-100 p-4">
         <div className="bg-white rounded-lg shadow-lg p-8 max-w-md text-center">
@@ -53,15 +68,15 @@ export default function BulkGeneratePage() {
       // Prepare payload
       const payload = {
         template: {
-          name: template.name,
-          orientation: template.orientation,
-          width: template.width,
-          height: template.height,
-          backgroundColor: template.backgroundColor,
-          elements: template.elements,
+          name: selectedTemplate?.name,
+          orientation: selectedTemplate?.orientation,
+          width: selectedTemplate?.width,
+          height: selectedTemplate?.height,
+          backgroundColor: selectedTemplate?.backgroundColor,
+          elements: selectedTemplate?.elements,
         },
         data,
-        fileName: template.name.replace(/\s+/g, '-').toLowerCase(),
+        fileName: (selectedTemplate?.name || 'certificates').replace(/\s+/g, '-').toLowerCase(),
       };
 
       // Call backend API
@@ -118,9 +133,20 @@ export default function BulkGeneratePage() {
           <h1 className="text-3xl font-bold text-gray-900">
             Bulk Generate Certificates
           </h1>
-          <p className="text-gray-600 mt-2">
-            Using template: <span className="font-semibold">{template.name}</span>
-          </p>
+          <div className="mt-3 grid grid-cols-1 md:grid-cols-[180px_1fr] gap-2 items-center">
+            <label className="text-sm font-medium text-gray-700">Certificate Template</label>
+            <select
+              value={selectedTemplateId}
+              onChange={(e) => setSelectedTemplateId(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-sm"
+            >
+              {templateOptions.map((template) => (
+                <option key={template.id} value={template.id}>
+                  {template.name}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
       </div>
 
@@ -136,11 +162,17 @@ export default function BulkGeneratePage() {
           </div>
         )}
 
-        <BulkGenerationWorkflow
-          template={template}
-          onGenerationStart={handleGenerationStart}
-          onGenerationComplete={handleGenerationComplete}
-        />
+        {selectedTemplate ? (
+          <BulkGenerationWorkflow
+            template={selectedTemplate}
+            onGenerationStart={handleGenerationStart}
+            onGenerationComplete={handleGenerationComplete}
+          />
+        ) : (
+          <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 text-sm text-amber-800">
+            Please select a template to continue bulk generation.
+          </div>
+        )}
       </div>
     </div>
   );
