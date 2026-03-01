@@ -6,7 +6,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZIPMiddleware
 
 from app.core.config import settings
-from app.api import templates, certificates, excel
+from app.core.pdf_engine import get_pdf_engine
+from app.api import templates, certificates, excel, pdf
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -17,7 +18,12 @@ logger = logging.getLogger(__name__)
 async def lifespan(app: FastAPI):
     """Lifespan context manager for FastAPI startup/shutdown events"""
     logger.info(f"Starting {settings.APP_NAME} v{settings.VERSION}")
-    # Initialize Playwright browser pool here if needed
+    # Initialize Playwright browser pool on startup
+    try:
+        pdf_engine = await get_pdf_engine()
+        logger.info("Playwright PDF engine initialized")
+    except Exception as e:
+        logger.error(f"Failed to initialize PDF engine: {e}")
     yield
     logger.info(f"Shutting down {settings.APP_NAME}")
 
@@ -45,6 +51,7 @@ def create_app() -> FastAPI:
     app.include_router(templates.router, prefix=settings.API_V1_PREFIX)
     app.include_router(certificates.router, prefix=settings.API_V1_PREFIX)
     app.include_router(excel.router, prefix=settings.API_V1_PREFIX)
+    app.include_router(pdf.router, prefix=settings.API_V1_PREFIX)
 
     @app.get("/health")
     async def health_check():

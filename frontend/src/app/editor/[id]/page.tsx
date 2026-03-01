@@ -7,6 +7,7 @@ import Canvas from '@/components/editor/Canvas';
 import Toolbar from '@/components/editor/Toolbar';
 import PropertyPanel from '@/components/editor/PropertyPanel';
 import AddElementForm from '@/components/editor/AddElementForm';
+import ExportModal from '@/components/editor/ExportModal';
 import Button from '@/components/shared/Button';
 import Input from '@/components/shared/Input';
 import { Save, Download, Eye } from 'lucide-react';
@@ -34,6 +35,7 @@ export default function EditorPage() {
 
   const [isSaving, setIsSaving] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
+  const [showExportModal, setShowExportModal] = useState(false);
 
   const selectedElement = elements.find((el) => el.id === selectedElementId) || null;
 
@@ -81,9 +83,7 @@ export default function EditorPage() {
   };
 
   const handleDownloadPDF = async () => {
-    // TODO: Implement PDF download via backend
-    console.log('Downloading PDF...');
-    alert('PDF export coming soon!');
+    setShowExportModal(true);
   };
 
   if (!template) {
@@ -152,6 +152,14 @@ export default function EditorPage() {
 
       {/* Toolbar */}
       {!showPreview && <Toolbar />}
+
+      {/* Export Modal */}
+      <ExportModal
+        template={template}
+        data={{}}
+        isOpen={showExportModal}
+        onClose={() => setShowExportModal(false)}
+      />
     </div>
   );
 }
