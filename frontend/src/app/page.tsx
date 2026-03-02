@@ -18,7 +18,18 @@ import Input from '@/components/shared/Input';
 import { Search } from 'lucide-react';
 import { CERTIFICATE_TYPES } from '@/lib/premiumTemplates';
 
-type CategoryType = 'all' | 'achievement' | 'participation' | 'completion' | 'award' | 'diploma' | 'training';
+type CategoryType =
+  | 'all'
+  | 'achievement'
+  | 'participation'
+  | 'completion'
+  | 'award'
+  | 'diploma'
+  | 'training'
+  | 'workshop'
+  | 'webinar'
+  | 'internship'
+  | 'honor';
 
 export default function Dashboard() {
   const router = useRouter();

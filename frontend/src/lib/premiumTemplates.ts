@@ -6,7 +6,17 @@
  */
 
 export interface CertificateCategory {
-  id: 'achievement' | 'participation' | 'completion' | 'award' | 'diploma' | 'training';
+  id:
+    | 'achievement'
+    | 'participation'
+    | 'completion'
+    | 'award'
+    | 'diploma'
+    | 'training'
+    | 'workshop'
+    | 'webinar'
+    | 'internship'
+    | 'honor';
   name: string;
   icon: string;
   description: string;
@@ -48,6 +58,30 @@ export const CERTIFICATE_TYPES: CertificateCategory[] = [
     name: 'Training',
     icon: '📚',
     description: 'Training and skill development certificates',
+  },
+  {
+    id: 'workshop',
+    name: 'Workshop',
+    icon: '🛠️',
+    description: 'Hands-on workshop attendance and completion certificates',
+  },
+  {
+    id: 'webinar',
+    name: 'Webinar',
+    icon: '💻',
+    description: 'Online event and webinar participation certificates',
+  },
+  {
+    id: 'internship',
+    name: 'Internship',
+    icon: '🏢',
+    description: 'Internship completion and performance certificates',
+  },
+  {
+    id: 'honor',
+    name: 'Honor',
+    icon: '🏅',
+    description: 'Honor and distinction recognition certificates',
   },
 ];
 
@@ -164,6 +198,34 @@ export const PREMIUM_TEMPLATES = [
     id: 'premium-abstract-1',
     name: 'Abstract Modern',
     category: 'completion' as const,
+    isPremium: true,
+    variables: ['{{recipientFullName}}', '{{certificateDate}}'],
+  },
+  {
+    id: 'premium-workshop-1',
+    name: 'Workshop Mastery',
+    category: 'workshop' as const,
+    isPremium: true,
+    variables: ['{{recipientFullName}}', '{{certificateDate}}'],
+  },
+  {
+    id: 'premium-webinar-1',
+    name: 'Webinar Spotlight',
+    category: 'webinar' as const,
+    isPremium: true,
+    variables: ['{{recipientFullName}}', '{{certificateDate}}'],
+  },
+  {
+    id: 'premium-internship-1',
+    name: 'Internship Excellence',
+    category: 'internship' as const,
+    isPremium: true,
+    variables: ['{{recipientFullName}}', '{{certificateDate}}'],
+  },
+  {
+    id: 'premium-honor-1',
+    name: 'Honor Distinction',
+    category: 'honor' as const,
     isPremium: true,
     variables: ['{{recipientFullName}}', '{{certificateDate}}'],
   },

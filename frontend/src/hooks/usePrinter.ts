@@ -3,6 +3,8 @@ import { CertificateTemplate } from '@/types/CertificateTemplate';
 import { useApi } from './useApi';
 import { serializeTemplateForPDF } from '@/utils/htmlGenerator';
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
+
 interface PrintOptions {
   format?: 'pdf' | 'png';
   fileName?: string;
@@ -34,7 +36,7 @@ export const usePrinter = () => {
 
         // Call backend PDF generation endpoint
         const response = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL}/pdf/generate`,
+          `${API_URL}/pdf/generate`,
           {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -84,7 +86,7 @@ export const usePrinter = () => {
         const payload = serializeTemplateForPDF(template, data);
 
         const response = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL}/pdf/preview`,
+          `${API_URL}/pdf/preview`,
           {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -138,7 +140,7 @@ export const usePrinter = () => {
         };
 
         const response = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL}/pdf/generate-bulk`,
+          `${API_URL}/pdf/generate-bulk`,
           {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },

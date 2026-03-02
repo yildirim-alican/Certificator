@@ -16,7 +16,7 @@ interface SystemLayoutPickerProps {
   onApplyPreset: (preset: SystemLayoutPreset) => void;
   onOrientationChange: (orientation: LayoutOrientation) => void;
   onIssuerLogoUpload: (file: File) => void;
-  onSponsorLogoUpload: (file: File) => void;
+  onSponsorLogoUpload: (file: File, logoIndex?: number) => void;
 }
 
 const SystemLayoutPicker: React.FC<SystemLayoutPickerProps> = ({
@@ -114,9 +114,10 @@ const SystemLayoutPicker: React.FC<SystemLayoutPickerProps> = ({
           <input
             type="file"
             accept="image/*"
+            multiple
             onChange={(e) => {
-              const file = e.target.files?.[0];
-              if (file) onSponsorLogoUpload(file);
+              const files = Array.from(e.target.files || []);
+              files.forEach((file, index) => onSponsorLogoUpload(file, index));
             }}
             className="w-full text-xs border border-gray-300 rounded px-2 py-2"
           />

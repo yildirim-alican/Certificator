@@ -5,6 +5,7 @@ import { CertificateTemplate } from '@/types/CertificateTemplate';
 import Button from '@/components/shared/Button';
 import Input from '@/components/shared/Input';
 import { X, Download, Eye, Loader, Plus, Trash2 } from 'lucide-react';
+import { usePrinter } from '@/hooks/usePrinter';
 
 export interface QuickEditData {
   recipientFullName: string;
@@ -30,6 +31,7 @@ interface QuickEditProps {
  * - PDF preview
  */
 const QuickEdit: React.FC<QuickEditProps> = ({ template, isOpen, onClose, onGenerate }) => {
+  const { generatePreview, generatePDF } = usePrinter();
   const [recipientName, setRecipientName] = useState('');
   const [certificateDate, setCertificateDate] = useState(
     new Date().toISOString().split('T')[0]
@@ -37,6 +39,9 @@ const QuickEdit: React.FC<QuickEditProps> = ({ template, isOpen, onClose, onGene
   const [sponsorLogos, setSponsorLogos] = useState<File[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleSponsorLogoUpload = (event: React.ChangeEvent<HTMLInputElement>, index: number) => {
     const files = event.target.files;
@@ -55,9 +60,83 @@ const QuickEdit: React.FC<QuickEditProps> = ({ template, isOpen, onClose, onGene
     setSponsorLogos(sponsorLogos.filter((_, i) => i !== index));
   };
 
+  const fileToDataUrl = (file: File) =>
+    new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        if (typeof reader.result === 'string') {
+          resolve(reader.result);
+          return;
+        }
+        reject(new Error('Invalid file content'));
+      };
+      reader.onerror = () => reject(new Error('Failed to read image file'));
+      reader.readAsDataURL(file);
+    });
+
+  const buildDataPayload = () => {
+    const parts = recipientName.trim().split(/\s+/).filter(Boolean);
+    const firstName = parts[0] || recipientName.trim();
+    const surname = parts.length > 1 ? parts.slice(1).join(' ') : firstName;
+
+    return {
+      recipientFullName: recipientName,
+      certificateDate,
+      '[recipient.name]': firstName,
+      '[recipient.surname]': surname,
+      '[certificate.issued_on]': certificateDate,
+      '{{recipientFullName}}': recipientName,
+      '{{certificateDate}}': certificateDate,
+    };
+  };
+
+  const buildTemplateWithSponsors = async () => {
+    const logoDataUrls = await Promise.all(
+      sponsorLogos
+        .filter((file) => file && file.size > 0)
+        .map((file) => fileToDataUrl(file))
+    );
+
+    const nextTemplate: CertificateTemplate = {
+      ...template,
+      elements: template.elements.map((element) => {
+        if (element.type !== 'image') {
+          return element;
+        }
+        const label = element.label.toLowerCase();
+        if (!label.includes('sponsor logo')) {
+          return element;
+        }
+
+        const matched = label.match(/sponsor logo\s*(\d+)/i);
+        const logoIndex = matched ? Math.max(parseInt(matched[1], 10) - 1, 0) : 0;
+        const src = logoDataUrls[logoIndex] || element.src;
+        return { ...element, src };
+      }),
+    };
+
+    return { nextTemplate, logoDataUrls };
+  };
+
   const handleGeneratePreview = async () => {
+    if (!recipientName.trim()) {
+      setError('Please enter recipient name for preview');
+      return;
+    }
+
     setShowPreview(true);
-    console.log('Preview generation started');
+    setPreviewLoading(true);
+    setError(null);
+
+    try {
+      const { nextTemplate } = await buildTemplateWithSponsors();
+      const result = await generatePreview(nextTemplate, buildDataPayload());
+      setPreviewUrl(result.url);
+    } catch (previewError) {
+      setError(previewError instanceof Error ? previewError.message : 'Failed to generate preview');
+    } finally {
+      setPreviewLoading(false);
+    }
   };
 
   const handleGenerate = async () => {
@@ -67,13 +146,25 @@ const QuickEdit: React.FC<QuickEditProps> = ({ template, isOpen, onClose, onGene
     }
 
     setIsGenerating(true);
+    setError(null);
     try {
-      onGenerate?.({
+      const { nextTemplate, logoDataUrls } = await buildTemplateWithSponsors();
+      const payload: QuickEditData = {
         recipientFullName: recipientName,
         certificateDate,
-        sponsorLogos: sponsorLogos.map((f) => f.name),
+        sponsorLogos: logoDataUrls,
         additionalData: {},
+      };
+
+      onGenerate?.(payload);
+
+      await generatePDF(nextTemplate, buildDataPayload(), {
+        fileName: `${template.name}-${recipientName.replace(/\s+/g, '_')}.pdf`,
       });
+
+      onClose();
+    } catch (generateError) {
+      setError(generateError instanceof Error ? generateError.message : 'Failed to generate PDF');
     } finally {
       setIsGenerating(false);
     }
@@ -113,13 +204,13 @@ const QuickEdit: React.FC<QuickEditProps> = ({ template, isOpen, onClose, onGene
               </button>
             </div>
 
-            {showPreview ? (
+            {showPreview && previewUrl ? (
               <iframe
-                src={'data:text/html;base64,PHRzcGFuIGNsYXNzPSJocyI+UHJldmlldyBjb21pbmcgc29vbjwvc3Bhbj4='}
+                src={previewUrl}
                 className="w-full h-48 border border-gray-300 rounded"
                 title="Certificate Preview"
               />
-            ) : showPreview ? (
+            ) : showPreview && previewLoading ? (
               <div className="bg-white rounded p-6 h-48 flex items-center justify-center border border-gray-300">
                 <Loader className="animate-spin text-blue-600 mr-2" size={20} />
                 <p className="text-sm text-gray-600">Generating preview...</p>
@@ -131,6 +222,8 @@ const QuickEdit: React.FC<QuickEditProps> = ({ template, isOpen, onClose, onGene
                 </p>
               </div>
             )}
+
+            {error && <p className="text-xs text-red-600 mt-2">{error}</p>}
           </div>
 
           {/* Form Section */}

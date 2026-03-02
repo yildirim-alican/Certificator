@@ -5,7 +5,6 @@ import { CertificateTemplate } from '@/types/CertificateTemplate';
 import Button from '@/components/shared/Button';
 import { CERTIFICATE_TYPES } from '@/lib/premiumTemplates';
 import QuickEdit, { QuickEditData } from '@/components/editor/QuickEdit';
-import { usePrinter } from '@/hooks/usePrinter';
 import { Zap } from 'lucide-react';
 
 interface CertCardProps {
@@ -24,32 +23,10 @@ interface CertCardProps {
  */
 const CertCard: React.FC<CertCardProps> = ({ template, onEdit, onDelete }) => {
   const [showQuickEdit, setShowQuickEdit] = useState(false);
-  const [isGenerating, setIsGenerating] = useState(false);
-  const { generatePDF } = usePrinter();
   const categoryType = CERTIFICATE_TYPES.find((t) => t.id === template.category);
 
-  const handleQuickGenerate = async (data: QuickEditData) => {
-    setIsGenerating(true);
-    try {
-      // Format data for PDF generation
-      const pdfData: Record<string, string> = {
-        recipientFullName: data.recipientFullName,
-        certificateDate: data.certificateDate,
-        ...(data.additionalData || {}),
-      };
-
-      // Generate and download PDF
-      await generatePDF(template, pdfData, {
-        fileName: `${template.name}-${data.recipientFullName.replace(/\s+/g, '_')}.pdf`,
-      });
-
-      setShowQuickEdit(false);
-    } catch (error) {
-      console.error('Quick generate error:', error);
-      alert('Failed to generate certificate. Please try again.');
-    } finally {
-      setIsGenerating(false);
-    }
+  const handleQuickGenerate = (_data: QuickEditData) => {
+    setShowQuickEdit(false);
   };
 
   return (
@@ -122,7 +99,6 @@ const CertCard: React.FC<CertCardProps> = ({ template, onEdit, onDelete }) => {
               variant="primary"
               onClick={() => onEdit?.(template.id)}
               className="flex-1"
-              disabled={isGenerating}
             >
               Edit
             </Button>
@@ -131,10 +107,9 @@ const CertCard: React.FC<CertCardProps> = ({ template, onEdit, onDelete }) => {
               variant="secondary"
               onClick={() => setShowQuickEdit(true)}
               className="flex-1 flex items-center justify-center gap-1"
-              disabled={isGenerating}
             >
               <Zap size={14} />
-              {isGenerating ? 'Generating...' : 'Quick'}
+              Quick
             </Button>
             {onDelete && (
               <Button
@@ -142,7 +117,6 @@ const CertCard: React.FC<CertCardProps> = ({ template, onEdit, onDelete }) => {
                 variant="secondary"
                 onClick={() => onDelete(template.id)}
                 className="px-3"
-                disabled={isGenerating}
               >
                 Delete
               </Button>

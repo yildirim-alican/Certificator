@@ -44,7 +44,17 @@ export interface CertificateTemplate {
   id: string;
   name: string;
   description?: string;
-  category?: 'achievement' | 'participation' | 'completion' | 'award' | 'diploma' | 'training';
+  category?:
+    | 'achievement'
+    | 'participation'
+    | 'completion'
+    | 'award'
+    | 'diploma'
+    | 'training'
+    | 'workshop'
+    | 'webinar'
+    | 'internship'
+    | 'honor';
   isPremium?: boolean;
   orientation: 'portrait' | 'landscape';
   width: number; // mm

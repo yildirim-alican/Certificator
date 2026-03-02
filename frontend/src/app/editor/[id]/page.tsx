@@ -15,6 +15,7 @@ import Button from '@/components/shared/Button';
 import Input from '@/components/shared/Input';
 import { Save, Download, Eye, FileText, Home, Sparkles } from 'lucide-react';
 import { CertificateElement, CertificateTemplate } from '@/types/CertificateTemplate';
+import { QuickEditData } from '@/components/editor/QuickEdit';
 import {
   LayoutOrientation,
   SystemLayoutPreset,
@@ -63,6 +64,10 @@ export default function EditorPage() {
   const ALLOWED_VARIABLES = ['[recipient.name]', '[recipient.surname]', '[certificate.success_rate]'];
 
   const selectedElement = elements.find((el) => el.id === selectedElementId) || null;
+  const ribbonTemplates =
+    template && !templates.some((entry) => entry.id === template.id)
+      ? [template, ...templates]
+      : templates;
   useEffect(() => {
     if (!template) {
       // Initialize with empty template
@@ -354,6 +359,23 @@ export default function EditorPage() {
     });
   };
 
+  const handleQuickGenerate = (data: QuickEditData) => {
+    const uploadedLogos = data.sponsorLogos || [];
+    if (uploadedLogos.length > 0) {
+      setSponsorLogos(uploadedLogos);
+      elements
+        .filter((element) => element.type === 'image' && element.label.toLowerCase().includes('sponsor logo'))
+        .forEach((element) => {
+          const matched = element.label.match(/sponsor logo\s*(\d+)/i);
+          const logoIndex = matched ? Math.max(parseInt(matched[1], 10) - 1, 0) : 0;
+          const src = uploadedLogos[logoIndex];
+          if (src) {
+            useEditorStore.getState().updateElement(element.id, { src });
+          }
+        });
+    }
+  };
+
   const handleOrientationChange = (orientation: LayoutOrientation) => {
     if (!template) return;
 
@@ -429,7 +451,7 @@ export default function EditorPage() {
       {/* Template Selector Ribbon */}
       {!showPreview && (
         <TemplateSelector
-          templates={templates}
+          templates={ribbonTemplates}
           activeTemplateId={template?.id || null}
           onSelectTemplate={(selectedTemplate) => {
             setTemplate(selectedTemplate);
@@ -517,11 +539,7 @@ export default function EditorPage() {
         template={template}
         isOpen={showQuickEdit}
         onClose={() => setShowQuickEdit(false)}
-        onGenerate={(data) => {
-          console.log('Quick edit data:', data);
-          // Implementation: generate PDF with quick edit data
-          setShowQuickEdit(false);
-        }}
+        onGenerate={handleQuickGenerate}
       />
     </div>
   );
